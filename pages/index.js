@@ -557,23 +557,29 @@ export default function Home() {
             
             <div className={styles.addProjectSection}>
               <div className={styles.clientSelector}>
-                <label htmlFor="newProjectClient">Cliente para nuevo proyecto:</label>
+                <label htmlFor="newProjectClient">
+                  Cliente para nuevo proyecto: 
+                  {clients.length === 0 && <span style={{color: 'red', marginLeft: '10px'}}>⚠️ No hay clientes cargados</span>}
+                </label>
                 <select
                   id="newProjectClient"
                   value={clientForNewProject}
-                  onChange={(e) => setClientForNewProject(e.target.value)}
+                  onChange={(e) => {
+                    console.log('🔄 Cliente seleccionado:', e.target.value);
+                    setClientForNewProject(e.target.value);
+                  }}
                   className={styles.clientSelectForNew}
+                  disabled={clients.length === 0}
                 >
                   <option value="">Selecciona un cliente</option>
-                  {clients.length > 0 ? (
-                    clients.map(clientName => (
+                  {clients.map((clientName, index) => {
+                    console.log(`📋 Renderizando option ${index}:`, clientName, typeof clientName);
+                    return (
                       <option key={clientName} value={clientName}>
                         {clientName}
                       </option>
-                    ))
-                  ) : (
-                    <option value="" disabled>No hay clientes. Usa "Gestionar Clientes" para agregar.</option>
-                  )}
+                    );
+                  })}
                 </select>
               </div>
               
