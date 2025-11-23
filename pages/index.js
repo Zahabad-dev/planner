@@ -64,16 +64,22 @@ export default function Home() {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('📂 INICIANDO CARGA DE DATOS...');
+      
       // Cargar clientes
       const clientsData = await fetchClients();
-      console.log('Clientes cargados desde Supabase:', clientsData);
+      console.log('📥 Clientes cargados desde Supabase (raw):', clientsData);
+      
       const clientNames = clientsData.map(c => c.name);
-      console.log('Nombres de clientes:', clientNames);
+      console.log('📝 Nombres de clientes extraídos:', clientNames);
+      console.log('📊 Total de clientes:', clientNames.length);
+      
       setClients(clientNames);
+      console.log('✅ Estado de clientes actualizado');
 
       // Cargar proyectos
       const projectsData = await fetchProjects();
-      console.log('Proyectos cargados:', projectsData);
+      console.log('📥 Proyectos cargados:', projectsData);
       setProjects(projectsData);
 
       // Restaurar mes de trabajo guardado
@@ -82,10 +88,11 @@ export default function Home() {
         setWorkingMonth(savedWorkingMonth);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error loading data:', error);
       alert('Error al cargar datos: ' + error.message);
     } finally {
       setLoading(false);
+      console.log('✅ CARGA DE DATOS COMPLETADA');
     }
   };
 
@@ -107,7 +114,19 @@ export default function Home() {
     }
   }, [workingMonth, isAuthenticated]);
 
+  // Debug: Monitorear cambios en el estado de clientes
+  useEffect(() => {
+    console.log('🔔 Estado de clientes cambió:', clients);
+    console.log('🔔 Tipo de datos:', clients.map(c => typeof c));
+  }, [clients]);
+
   const addProject = async (type) => {
+    console.log('🆕 AÑADIENDO PROYECTO:', {
+      type,
+      clientForNewProject,
+      todosLosClientes: clients
+    });
+
     // Validar que haya un cliente seleccionado
     if (!clientForNewProject) {
       alert('Por favor selecciona un cliente primero');
@@ -124,7 +143,15 @@ export default function Home() {
       referencias: ''
     };
 
+    console.log('📤 Enviando nuevo proyecto a base de datos:', {
+      type,
+      clientName: clientForNewProject,
+      projectData: newProjectData
+    });
+
     const result = await dbAddProject(type, newProjectData, clientForNewProject);
+    
+    console.log('✅ Resultado de crear proyecto:', result);
     
     if (result.success) {
       setProjects(prev => ({
