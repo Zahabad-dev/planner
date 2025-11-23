@@ -66,10 +66,14 @@ export default function Home() {
     try {
       // Cargar clientes
       const clientsData = await fetchClients();
-      setClients(clientsData.map(c => c.name));
+      console.log('Clientes cargados desde Supabase:', clientsData);
+      const clientNames = clientsData.map(c => c.name);
+      console.log('Nombres de clientes:', clientNames);
+      setClients(clientNames);
 
       // Cargar proyectos
       const projectsData = await fetchProjects();
+      console.log('Proyectos cargados:', projectsData);
       setProjects(projectsData);
 
       // Restaurar mes de trabajo guardado
@@ -79,6 +83,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      alert('Error al cargar datos: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -522,11 +527,15 @@ export default function Home() {
                   className={styles.clientSelectForNew}
                 >
                   <option value="">Selecciona un cliente</option>
-                  {clients.map(clientName => (
-                    <option key={clientName} value={clientName}>
-                      {clientName} ({getClientProjectCount(clientName)} en {activeTab})
-                    </option>
-                  ))}
+                  {clients.length > 0 ? (
+                    clients.map(clientName => (
+                      <option key={clientName} value={clientName}>
+                        {clientName}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No hay clientes. Usa "Gestionar Clientes" para agregar.</option>
+                  )}
                 </select>
               </div>
               
