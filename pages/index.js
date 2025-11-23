@@ -522,9 +522,9 @@ export default function Home() {
                   className={styles.clientSelectForNew}
                 >
                   <option value="">Selecciona un cliente</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.name}>
-                      {client.name} ({getClientProjectCount(client.name)} en {activeTab})
+                  {clients.map(clientName => (
+                    <option key={clientName} value={clientName}>
+                      {clientName} ({getClientProjectCount(clientName)} en {activeTab})
                     </option>
                   ))}
                 </select>
