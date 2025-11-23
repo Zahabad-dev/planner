@@ -33,27 +33,9 @@ CREATE INDEX idx_projects_client_id ON projects(client_id);
 CREATE INDEX idx_projects_type ON projects(type);
 CREATE INDEX idx_projects_fecha_entrega ON projects(fecha_entrega);
 
--- Habilitar Row Level Security (RLS)
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-
--- POLÍTICAS PERMISIVAS - Permitir acceso total con anon key
--- Esto es seguro porque solo KODART tiene acceso al frontend
-
--- Eliminar políticas antiguas si existen
-DROP POLICY IF EXISTS "Allow all for clients" ON clients;
-DROP POLICY IF EXISTS "Allow all for projects" ON projects;
-
--- Políticas que permiten todo acceso con la anon key
-CREATE POLICY "Allow all for clients" ON clients
-  FOR ALL 
-  USING (true)
-  WITH CHECK (true);
-
-CREATE POLICY "Allow all for projects" ON projects
-  FOR ALL 
-  USING (true)
-  WITH CHECK (true);
+-- DESHABILITAR Row Level Security para acceso completo
+ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE projects DISABLE ROW LEVEL SECURITY;
 
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -71,5 +53,6 @@ CREATE TRIGGER update_projects_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
--- Insertar cliente de ejemplo (opcional)
--- INSERT INTO clients (name) VALUES ('Cliente Ejemplo') ON CONFLICT (name) DO NOTHING;
+-- Insertar cliente de prueba
+INSERT INTO clients (name) VALUES ('Magnolias') ON CONFLICT (name) DO NOTHING;
+INSERT INTO clients (name) VALUES ('Cliente Ejemplo') ON CONFLICT (name) DO NOTHING;
