@@ -141,6 +141,14 @@ export default function Home() {
     const projectToUpdate = projects[type].find(p => p.id === projectId);
     const updatedProjectData = { ...projectToUpdate, [field]: value };
     
+    console.log('🔄 ACTUALIZANDO PROYECTO:', {
+      projectId,
+      type,
+      field,
+      value,
+      projectoCompleto: updatedProjectData
+    });
+    
     setProjects(prev => ({
       ...prev,
       [type]: prev[type].map(project =>
@@ -153,8 +161,11 @@ export default function Home() {
     // Actualizar en base de datos
     const result = await dbUpdateProject(projectId, updatedProjectData);
     
+    console.log('✅ RESULTADO DE ACTUALIZACIÓN:', result);
+    
     if (!result.success) {
-      console.error('Error al actualizar proyecto:', result.error);
+      console.error('❌ Error al actualizar proyecto:', result.error);
+      alert('Error al guardar: ' + result.error);
       // Recargar datos en caso de error
       loadData();
     }
@@ -747,12 +758,10 @@ export default function Home() {
                         <label>Cliente</label>
                         <select
                           value={project.cliente}
-                          onChange={(e) => updateProject(project.type, project.id, 'cliente', e.target.value)}
+                          disabled
+                          title="No se puede cambiar el cliente. Elimina y crea un nuevo proyecto si necesitas cambiar el cliente."
                         >
-                          <option value="">Selecciona un cliente</option>
-                          {clients.map(client => (
-                            <option key={client.id} value={client.name}>{client.name}</option>
-                          ))}
+                          <option value={project.cliente}>{project.cliente}</option>
                         </select>
                       </div>
 
@@ -867,12 +876,10 @@ export default function Home() {
                       <label>Cliente</label>
                       <select
                         value={project.cliente}
-                        onChange={(e) => updateProject(activeTab, project.id, 'cliente', e.target.value)}
+                        disabled
+                        title="No se puede cambiar el cliente. Elimina y crea un nuevo proyecto si necesitas cambiar el cliente."
                       >
-                        <option value="">Selecciona un cliente</option>
-                        {clients.map(client => (
-                          <option key={client.id} value={client.name}>{client.name}</option>
-                        ))}
+                        <option value={project.cliente}>{project.cliente}</option>
                       </select>
                     </div>
 
