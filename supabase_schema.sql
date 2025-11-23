@@ -1,9 +1,53 @@
 -- Script SQL para configurar las tablas en Supabase
 -- Ejecuta este script en el SQL Editor de Supabase
 
--- Eliminar tablas existentes si existen
-DROP TABLE IF EXISTS projects CASCADE;
-DROP TABLE IF EXISTS clients CASCADE;
+-- PASO 1: Verificar estado actual de RLS
+SELECT 
+  tablename, 
+  rowsecurity as rls_activo,
+  CASE 
+    WHEN rowsecurity THEN '❌ RLS ACTIVO - DEBE DESACTIVARSE'
+    ELSE '✅ RLS DESACTIVADO - CORRECTO'
+  END as estado
+FROM pg_tables 
+WHERE schemaname = 'public' 
+  AND tablename IN ('clients', 'projects');
+
+-- PASO 2: Eliminar políticas de RLS si existen
+DROP POLICY IF EXISTS "Enable read access for all users" ON clients;
+DROP POLICY IF EXISTS "Enable insert for all users" ON clients;
+DROP POLICY IF EXISTS "Enable update for all users" ON clients;
+DROP POLICY IF EXISTS "Enable delete for all users" ON clients;
+
+DROP POLICY IF EXISTS "Enable read access for all users" ON projects;
+DROP POLICY IF EXISTS "Enable insert for all users" ON projects;
+DROP POLICY IF EXISTS "Enable update for all users" ON projects;
+DROP POLICY IF EXISTS "Enable delete for all users" ON projects;
+
+-- PASO 3: Deshabilitar RLS explícitamente
+ALTER TABLE IF EXISTS public.clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.projects DISABLE ROW LEVEL SECURITY;
+
+-- PASO 4: Verificar que se deshabilitó
+SELECT 
+  tablename, 
+  rowsecurity as rls_activo,
+  CASE 
+    WHEN rowsecurity THEN '❌ FALLÓ - RLS SIGUE ACTIVO'
+    ELSE '✅ ÉXITO - RLS DESACTIVADO'
+  END as resultado
+FROM pg_tables 
+WHERE schemaname = 'public' 
+  AND tablename IN ('clients', 'projects');
+
+-- PASO 5: Verificar que no hay políticas activas
+SELECT 
+  tablename,
+  policyname,
+  '⚠️ ESTA POLÍTICA DEBE ELIMINARSE' as alerta
+FROM pg_policies 
+WHERE schemaname = 'public'
+  AND tablename IN ('clients', 'projects');
 
 -- Tabla de clientes
 CREATE TABLE clients (
