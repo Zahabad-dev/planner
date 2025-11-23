@@ -217,7 +217,7 @@ export default function Home() {
     }
 
     return filtered;
-  }, [projects, activeTab, selectedClient, selectedMonth, workingMonth]);
+  }, [projects, activeTab, selectedClient, selectedMonth]);
 
   // Obtener TODOS los proyectos de un cliente (todas las categorías)
   const getAllClientProjects = useMemo(() => {
@@ -725,7 +725,7 @@ export default function Home() {
                 {projects[activeTab].length === 0 ? (
                   <>
                     <p>No hay proyectos aún</p>
-                    <p className={styles.emptyHint}>Haz clic en "Añadir Proyecto" para comenzar</p>
+                    <p className={styles.emptyHint}>Haz clic en &quot;Añadir Proyecto&quot; para comenzar</p>
                   </>
                 ) : (
                   <>
