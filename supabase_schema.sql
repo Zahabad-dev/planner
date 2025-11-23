@@ -33,12 +33,34 @@ CREATE INDEX IF NOT EXISTS idx_projects_fecha_entrega ON projects(fecha_entrega)
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
--- Políticas de acceso (permitir todo por ahora - ajusta según tus necesidades)
-CREATE POLICY "Permitir todo acceso a clients" ON clients
-  FOR ALL USING (true);
+-- Eliminar políticas antiguas si existen
+DROP POLICY IF EXISTS "Permitir todo acceso a clients" ON clients;
+DROP POLICY IF EXISTS "Permitir todo acceso a projects" ON projects;
 
-CREATE POLICY "Permitir todo acceso a projects" ON projects
-  FOR ALL USING (true);
+-- Políticas de acceso - Solo para usuarios autenticados
+CREATE POLICY "Usuarios autenticados pueden ver clients" ON clients
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden insertar clients" ON clients
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden actualizar clients" ON clients
+  FOR UPDATE USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden eliminar clients" ON clients
+  FOR DELETE USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden ver projects" ON projects
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden insertar projects" ON projects
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden actualizar projects" ON projects
+  FOR UPDATE USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuarios autenticados pueden eliminar projects" ON projects
+  FOR DELETE USING (auth.role() = 'authenticated');
 
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -50,5 +72,12 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger para updated_at
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- CREAR USUARIO KODART
+-- Nota: Este usuario debe crearse manualmente en Supabase Authentication
+-- Ve a Authentication > Users > Add User
+-- Email: kodart@planner.local
+-- Password: Losmejores2025@

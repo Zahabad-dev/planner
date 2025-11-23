@@ -2,15 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
-import { fetchClients, addClient as dbAddClient, deleteClient as dbDeleteClient, fetchProjects, addProject as dbAddProject, updateProject as dbUpdateProject, deleteProject as dbDeleteProject } from '../lib/database';
-import Login from '../components/Login';
 
 const CONTENT_TYPES = ['reels', 'post', 'historias', 'carrusel', 'tiktok'];
 // Sin límite de proyectos - puedes tener tantos como necesites por día
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('reels');
   const [selectedClient, setSelectedClient] = useState('todos');
   const [selectedMonth, setSelectedMonth] = useState('todos');
@@ -46,71 +42,58 @@ export default function Home() {
     tiktok: []
   });
 
-  // Cargar datos desde Supabase al iniciar (solo si está autenticado)
+  // Cargar datos desde localStorage al iniciar
   useEffect(() => {
-    const checkAuth = () => {
-      const authStatus = sessionStorage.getItem('kodart_auth');
-      if (authStatus === 'true') {
-        setIsAuthenticated(true);
-        loadData();
-      } else {
-        setLoading(false);
+    const savedData = localStorage.getItem('contentPlanner');
+    if (savedData) {
+      try {
+        setProjects(JSON.parse(savedData));
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
       }
-    };
+    }
 
-    checkAuth();
+    const savedClients = localStorage.getItem('contentPlannerClients');
+    if (savedClients) {
+      try {
+        setClients(JSON.parse(savedClients));
+      } catch (error) {
+        console.error('Error al cargar clientes:', error);
+      }
+    }
+
+    const savedWorkingMonth = localStorage.getItem('contentPlannerWorkingMonth');
+    if (savedWorkingMonth) {
+      setWorkingMonth(savedWorkingMonth);
+    }
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Cargar clientes
-      const clientsData = await fetchClients();
-      setClients(clientsData.map(c => c.name));
+  // Guardar automáticamente en localStorage cuando cambian los proyectos
+  useEffect(() => {
+    localStorage.setItem('contentPlanner', JSON.stringify(projects));
+  }, [projects]);
 
-      // Cargar proyectos
-      const projectsData = await fetchProjects();
-      setProjects(projectsData);
-
-      // Restaurar mes de trabajo guardado
-      const savedWorkingMonth = localStorage.getItem('contentPlannerWorkingMonth');
-      if (savedWorkingMonth) {
-        setWorkingMonth(savedWorkingMonth);
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = () => {
-    sessionStorage.setItem('kodart_auth', 'true');
-    setIsAuthenticated(true);
-    loadData();
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('kodart_auth');
-    setIsAuthenticated(false);
-  };
+  // Guardar clientes en localStorage
+  useEffect(() => {
+    localStorage.setItem('contentPlannerClients', JSON.stringify(clients));
+  }, [clients]);
 
   // Guardar mes de trabajo en localStorage
   useEffect(() => {
-    if (isAuthenticated) {
-      localStorage.setItem('contentPlannerWorkingMonth', workingMonth);
-    }
-  }, [workingMonth, isAuthenticated]);
+    localStorage.setItem('contentPlannerWorkingMonth', workingMonth);
+  }, [workingMonth]);
 
-  const addProject = async (type) => {
+  const addProject = (type) => {
     // Validar que haya un cliente seleccionado
     if (!clientForNewProject) {
       alert('Por favor selecciona un cliente primero');
       return;
     }
 
-    const newProjectData = {
+    const newProject = {
+      id: Date.now(),
       nombre: '',
+      cliente: clientForNewProject, // Asignar automáticamente el cliente seleccionado
       fechaEntrega: `${workingMonth}-01`, // Pre-llenar con el primer día del mes de trabajo
       desarrollo: '',
       elementos: '',
@@ -119,23 +102,13 @@ export default function Home() {
       referencias: ''
     };
 
-    const result = await dbAddProject(type, newProjectData, clientForNewProject);
-    
-    if (result.success) {
-      setProjects(prev => ({
-        ...prev,
-        [type]: [...prev[type], result.data]
-      }));
-    } else {
-      alert('Error al crear proyecto: ' + result.error);
-    }
+    setProjects(prev => ({
+      ...prev,
+      [type]: [...prev[type], newProject]
+    }));
   };
 
-  const updateProject = async (type, projectId, field, value) => {
-    // Actualizar localmente primero para UX inmediata
-    const projectToUpdate = projects[type].find(p => p.id === projectId);
-    const updatedProjectData = { ...projectToUpdate, [field]: value };
-    
+  const updateProject = (type, projectId, field, value) => {
     setProjects(prev => ({
       ...prev,
       [type]: prev[type].map(project =>
@@ -144,78 +117,14 @@ export default function Home() {
           : project
       )
     }));
-
-    // Actualizar en base de datos
-    const result = await dbUpdateProject(projectId, updatedProjectData);
-    
-    if (!result.success) {
-      console.error('Error al actualizar proyecto:', result.error);
-      // Recargar datos en caso de error
-      loadData();
-    }
   };
 
-  const deleteProject = async (type, projectId) => {
+  const deleteProject = (type, projectId) => {
     if (confirm('¿Estás seguro de eliminar este proyecto?')) {
-      // Eliminar localmente primero
       setProjects(prev => ({
         ...prev,
         [type]: prev[type].filter(project => project.id !== projectId)
       }));
-
-      // Eliminar en base de datos
-      const result = await dbDeleteProject(projectId);
-      
-      if (!result.success) {
-        console.error('Error al eliminar proyecto:', result.error);
-        // Recargar datos en caso de error
-        loadData();
-      }
-    }
-  };
-
-  // Gestión de clientes
-  const addClientHandler = async () => {
-    const trimmedName = newClientName.trim();
-    if (!trimmedName) {
-      alert('Por favor ingresa un nombre para el cliente');
-      return;
-    }
-
-    if (clients.includes(trimmedName)) {
-      alert('Este cliente ya existe');
-      return;
-    }
-
-    const result = await dbAddClient(trimmedName);
-    
-    if (result.success) {
-      setClients(prev => [...prev, trimmedName]);
-      setNewClientName('');
-      setShowClientModal(false);
-      setClientForNewProject(trimmedName);
-    } else {
-      alert('Error al crear cliente: ' + result.error);
-    }
-  };
-
-  const deleteClientHandler = async (clientName) => {
-    if (confirm(`¿Estás seguro de eliminar el cliente "${clientName}"? Esto eliminará también todos sus proyectos.`)) {
-      const result = await dbDeleteClient(clientName);
-      
-      if (result.success) {
-        setClients(prev => prev.filter(c => c !== clientName));
-        if (clientForNewProject === clientName) {
-          setClientForNewProject('');
-        }
-        if (selectedClient === clientName) {
-          setSelectedClient('todos');
-        }
-        // Recargar proyectos para reflejar eliminación en cascada
-        loadData();
-      } else {
-        alert('Error al eliminar cliente: ' + result.error);
-      }
     }
   };
 
@@ -229,6 +138,27 @@ export default function Home() {
     });
     return Array.from(clientSet).sort();
   }, [projects]);
+
+  // Gestión de clientes
+  const addClient = () => {
+    const trimmedName = newClientName.trim();
+    if (!trimmedName) {
+      alert('Por favor ingresa un nombre de cliente');
+      return;
+    }
+    if (clients.some(c => c.name.toLowerCase() === trimmedName.toLowerCase())) {
+      alert('Este cliente ya existe');
+      return;
+    }
+    setClients(prev => [...prev, { id: Date.now(), name: trimmedName }]);
+    setNewClientName('');
+  };
+
+  const deleteClient = (clientId) => {
+    if (confirm('¿Estás seguro de eliminar este cliente?')) {
+      setClients(prev => prev.filter(c => c.id !== clientId));
+    }
+  };
 
   // Navegación de mes
   const changeMonth = (direction) => {
@@ -420,48 +350,21 @@ export default function Home() {
     setShowExportMenu(false);
   };
 
-  // Si no está autenticado, mostrar pantalla de login
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
-
-  // Si está cargando datos, mostrar indicador
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <h2>Cargando datos...</h2>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.container}>
       <Head>
-        <title>Content Planner - KODART</title>
+        <title>Content Planner - Organizador de Ideas</title>
         <meta name="description" content="Planificador creativo de contenido multimedia" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className={styles.main}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>
-              📱 Content Planner - KODART
-            </h1>
-            <p className={styles.subtitle}>
-              Organiza tus ideas de contenido creativo
-            </p>
-          </div>
-          <button 
-            className={styles.logoutButton}
-            onClick={handleLogout}
-            title="Cerrar sesión"
-          >
-            🚪 Salir
-          </button>
-        </div>
+        <h1 className={styles.title}>
+          📱 Content Planner
+        </h1>
+        <p className={styles.subtitle}>
+          Organiza tus ideas de contenido creativo
+        </p>
 
         {/* Selector de mes de trabajo */}
         <div className={styles.monthSelector}>
@@ -959,12 +862,12 @@ export default function Home() {
                   placeholder="Nombre del nuevo cliente..."
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addClientHandler()}
+                  onKeyPress={(e) => e.key === 'Enter' && addClient()}
                   className={styles.clientInput}
                 />
                 <button 
                   className={styles.addClientButton}
-                  onClick={addClientHandler}
+                  onClick={addClient}
                 >
                   + Agregar
                 </button>
@@ -976,12 +879,12 @@ export default function Home() {
                     No hay clientes registrados. Agrega tu primer cliente arriba.
                   </p>
                 ) : (
-                  clients.map(clientName => (
-                    <div key={clientName} className={styles.clientItem}>
-                      <span className={styles.clientName}>{clientName}</span>
+                  clients.map(client => (
+                    <div key={client.id} className={styles.clientItem}>
+                      <span className={styles.clientName}>{client.name}</span>
                       <button
                         className={styles.deleteClientButton}
-                        onClick={() => deleteClientHandler(clientName)}
+                        onClick={() => deleteClient(client.id)}
                         title="Eliminar cliente"
                       >
                         🗑️
